@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flowscollection.ui.theme.KotlinFlowsTheme
@@ -36,16 +37,46 @@ class MainActivity : ComponentActivity() {
         setContent {
             KotlinFlowsTheme {
                 val viewModel = viewModel<MainViewModel>()
-                val time = viewModel.countDownFlow.collectAsState(initial = 10)
+                val count = viewModel.stateFlow.collectAsState(initial = 0)
 
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = time.value.toString(),
-                        color = Color.Cyan,
-                        fontSize = 30.sp,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Button(onClick = { viewModel.incrementCounter() }) {
+                        Text(
+                            text = "Counter at the moment is: ${count.value} ", color = Color.Cyan
+                        )
+                    }
                 }
+            }
+        }
+    }
+
+
+    // This both extension funs are for handle the recollection of flows for UI
+
+
+    // Both receive an flow and a suspend functions to handle
+
+
+    /*
+    * repeatOnLifecycle Is a suspend function that takes Lifecycle.State as a parameter that is used to automatically create and start a
+    *  new coroutine with the block passed to it when the lifecycle reaches this state, and canceling the current
+    *  coroutine executing this block when the lifecycle falls below state
+    * */
+    fun <T> ComponentActivity.collectLatestLifecycleFlow(
+        flow: Flow<T>,
+        collect: suspend (T) -> Unit
+    ) {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                flow.collectLatest(collect)
+            }
+        }
+    }
+
+    fun <T> ComponentActivity.collectLifecycleFlow(flow: Flow<T>, collect: suspend (T) -> Unit) {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                flow.collect(collect)
             }
         }
     }

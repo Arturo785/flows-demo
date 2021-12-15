@@ -2,6 +2,7 @@ package com.example.flowscollection
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -32,9 +33,51 @@ class MainViewModel : ViewModel() {
         emit("dessert")
     }
 
+
+    // basically stateFlow is a hot flow that emits whether is being observed or not
+    // and also holds the current value which means survives rotation changes and persists
+    private val _stateFlow = MutableStateFlow(0)
+    val stateFlow = _stateFlow.asStateFlow()
+
+    //StateFlow, it keeps the the most recent state. like for rotating screen
+    // SharedFlow is more for replaying previous states, which you don't want for UI state.
+    // does not trigger again on rotation
+
+    private val _sharedFlow = MutableSharedFlow<Int>()
+    val sharedFlow = _sharedFlow.asSharedFlow()
+
+    fun squareNumber(number: Int) {
+        viewModelScope.launch(Dispatchers.Main) {
+            _sharedFlow.emit(number * number)
+        }
+    }
+
+    fun incrementCounter() {
+        _stateFlow.value += 1
+    }
+
+
     init {
-        //flowRestaurantExample()
-        flowRestaurantExample2()
+        squareNumber(3) // if we use it in here the event is lost because is hot flow and the event
+        // happens regarding if observers available
+
+        viewModelScope.launch(Dispatchers.Main) {
+            sharedFlow.collect {
+                delay(2000L)
+                println("FIRST FLOW: The received number is $it")
+            }
+        }
+        viewModelScope.launch(Dispatchers.Main) {
+            sharedFlow.collect {
+                delay(3000L)
+                println("SECOND FLOW: The received number is $it")
+            }
+        }
+
+        squareNumber(4)
+        // after this call the event does not happen again which means is only triggered once
+
+        // with replay param it caches the number given
     }
 
     private fun flowRestaurantExample() {
